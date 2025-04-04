@@ -147,9 +147,9 @@ iamhome.home_axis("X", stepper_x, 1, .5, 0)
 #taking Y home
 stepper_y.move_motor(40, 1, 0.002, "Full")# Undo Y Limit Switch Clearance
 stepper_y.move_motor(EndPoint_Ysteps, 1, 0.002, "Full")
-home_axis("Y", stepper_y, 1, .5, 0)
+iamhome.home_axis("Y", stepper_y, 1, .5, 0)
 #taking Z home
-home_axis("Z", stepper_z, 10, .02, 1)
+iamhome.home_axis("Z", stepper_z, 10, .02, 1)
 
 
 # Cleanup GPIO
@@ -158,5 +158,3 @@ stepper_x.cleanup()
 stepper_y.cleanup()
 stepper_z.cleanup()
 claw.cleanup()
-
-    
