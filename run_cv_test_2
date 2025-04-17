@@ -1,27 +1,67 @@
-import cv2
-import time
+import subprocess
+import sys
+import os
 
-# This is your actual detection logic
+# Define your pixel boundaries for the valid droplet area
+X_MIN = 100
+X_MAX = 540
+Y_MIN = 120
+Y_MAX = 420
+
 def detect_droplet():
-    # Your real droplet detection code goes here
-    # Example (placeholder):
-    # If a droplet is found, return (cx, cy)
-    # If no droplet is found, return None
-    #
-    # For demonstration:
-    print("Simulating droplet detection...")
-    time.sleep(1)
-    return None  # Replace with actual detection result
+    """
+    Activates the virtual environment, runs the OpenCV test script, 
+    and retrieves the detected centroid coordinates.
 
-# This is what you'll call from main.py
+    :return: The centroid coordinates as a tuple (cx, cy) or None if not found.
+    """
+
+    venv_path = "/home/researchlab1/myvenv/bin/activate"
+    command = f"source {venv_path} && python /home/researchlab1/Documents/Testing/cv_test.py"
+
+    process = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True, text=True)
+
+    print("STDOUT:", process.stdout)
+    print("STDERR:", process.stderr)
+
+    try:
+        drop_px = eval(process.stdout.strip())
+        if isinstance(drop_px, tuple) and len(drop_px) == 2:
+            return drop_px
+        else:
+            return None
+    except:
+        return None
+
+def is_within_bounds(px_coords):
+    """
+    Check if the detected pixel coordinates are within the allowed area.
+    """
+    x, y = px_coords
+    return X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX
+
 def run_cv_test():
+    """
+    Runs droplet detection and checks pixel bounds.
+    Prompts user to retry only after failed detection or invalid location.
+    """
+    first_attempt = True
+
     while True:
         print("Running droplet detection...")
         drop_px = detect_droplet()
 
         if drop_px:
-            print(f"Droplet detected at pixel coordinates: {drop_px}")
-            return drop_px
+            if is_within_bounds(drop_px):
+                print(f"Droplet detected at pixel coordinates: {drop_px}")
+                return drop_px
+            else:
+                print(f"Droplet detected at {drop_px}, but it's *outside the valid region*:")
+                print(f"  X must be between {X_MIN} and {X_MAX}")
+                print(f"  Y must be between {Y_MIN} and {Y_MAX}")
         else:
             print("No droplet detected.")
-            input("Please place the droplet on the surface and press ENTER to try again.")
+
+        if first_attempt:
+            first_attempt = False
+        input("Please place the droplet in the valid region and press ENTER to try again.")
