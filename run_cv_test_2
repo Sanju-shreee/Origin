@@ -1,0 +1,27 @@
+import cv2
+import time
+
+# This is your actual detection logic
+def detect_droplet():
+    # Your real droplet detection code goes here
+    # Example (placeholder):
+    # If a droplet is found, return (cx, cy)
+    # If no droplet is found, return None
+    #
+    # For demonstration:
+    print("Simulating droplet detection...")
+    time.sleep(1)
+    return None  # Replace with actual detection result
+
+# This is what you'll call from main.py
+def run_cv_test():
+    while True:
+        print("Running droplet detection...")
+        drop_px = detect_droplet()
+
+        if drop_px:
+            print(f"Droplet detected at pixel coordinates: {drop_px}")
+            return drop_px
+        else:
+            print("No droplet detected.")
+            input("Please place the droplet on the surface and press ENTER to try again.")
