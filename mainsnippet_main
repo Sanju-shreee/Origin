@@ -1,0 +1,29 @@
+import run_cv_test  # Assuming your function is in a file named run_cv_test.py
+
+# Define the pixel boundaries for the valid droplet area
+X_MIN = 100
+X_MAX = 540
+Y_MIN = 120
+Y_MAX = 420
+
+# Prompt user to place droplet on surface and press ENTER
+while True:
+    user_input = input("Please press ENTER after you successfully place a droplet on the surface (within frame)!")
+
+    if user_input == "":
+        # Run droplet detection when ENTER is pressed
+        drop_px = run_cv_test.run_cv_test()
+
+        if drop_px:  # Droplet detected
+            x, y = drop_px
+            if X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX:
+                print(f"Droplet detected at valid coordinates: {drop_px}")
+                break  # Exit the loop if valid droplet is detected
+            else:
+                print(f"Droplet detected at {drop_px}, but it's outside the valid region.")
+                print(f"  X must be between {X_MIN} and {X_MAX}")
+                print(f"  Y must be between {Y_MIN} and {Y_MAX}")
+        else:
+            print("No droplet detected. Please try again.")
+    else:
+        print("Invalid input. Please press ENTER without typing anything.")
