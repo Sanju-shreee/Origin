@@ -1,0 +1,25 @@
+# Feedback loop to verify if droplet was picked up
+while True:
+    # Move claw out of camera view
+    iamhome.home_axis("X", stepper_x, 1, 0.0002/16, 0)
+
+    # Scan surface again
+    post_pickup = run_cv_test.run_cv_test()
+
+    # If no droplet detected, break loop
+    if not post_pickup:
+        print("✅ Droplet pickup verified successfully.")
+        break
+    else:
+        print("⚠️ Droplet still detected. Retrying pickup...")
+
+        # Move back to droplet coordinates
+        stepper_y.move_motor(y_steps*stepfactor, 0, 0.0002/16, microstepping_setting)
+        stepper_x.move_motor(x_steps*stepfactor, 1, 0.0002/16, microstepping_setting)
+
+        # Drop down and try again
+        stepper_z.move_motor(915*stepfactor, 0, 0.00002/16, microstepping_setting)
+        sleep(1)
+        claw.close_claw(step_delay)
+        sleep(3)
+        stepper_z.move_motor(300*stepfactor, 1, 0.00002/16, microstepping_setting)
