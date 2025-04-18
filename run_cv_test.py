@@ -2,33 +2,42 @@ import subprocess
 import sys
 import os
 
-def run_cv_test():
+def detect_droplet():
     """
     Activates the virtual environment, runs the OpenCV test script, 
     and retrieves the detected centroid coordinates.
-    
+
     :return: The centroid coordinates as a tuple (cx, cy) or None if not found.
     """
 
-    # Path to the virtual environment activation script
     venv_path = "/home/researchlab1/myvenv/bin/activate"
-
-    # Construct the command to activate the virtual environment and run cv_test.py
     command = f"source {venv_path} && python /home/researchlab1/Documents/Testing/cv_test.py"
 
-    # Run the command in a new shell
     process = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True, text=True)
 
-    # Print the output and errors (for debugging)
     print("STDOUT:", process.stdout)
     print("STDERR:", process.stderr)
 
-    # Extract the centroid coordinates from cv_test.py output
     try:
-        drop_px = eval(process.stdout.strip())  # Convert string output to tuple
+        drop_px = eval(process.stdout.strip())
         if isinstance(drop_px, tuple) and len(drop_px) == 2:
-            return drop_px  # Return valid centroid coordinates
+            return drop_px
         else:
             return None
     except:
-        return None  # Return None if extraction fails
+        return None
+
+def run_cv_test():
+    """
+    Runs droplet detection once and returns the droplet's centroid coordinates.
+    Returns None if no droplet is detected.
+    """
+    print("Running droplet detection...")
+    drop_px = detect_droplet()
+
+    if drop_px:
+        print(f"Droplet detected at pixel coordinates: {drop_px}")
+        return drop_px
+    else:
+        print("No droplet detected.")
+        return None
