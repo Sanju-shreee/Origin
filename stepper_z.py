@@ -9,6 +9,10 @@ from time import sleep
 import RPi.GPIO as GPIO
 
 
+microstepping_setting = "1/32"
+stepfactor = 32
+
+
 # Define the GPIO Pins
 DIR_pin = 24 # Direction pin
 STEP_pin = 23 # sends pulses to move the motor
@@ -28,7 +32,7 @@ GPIO.setup(M2, GPIO.OUT)
 
 #Microstepping settings: (Change these to set to different modes):
 # Options: "Full", "1/2", "1/4", "1/8", "1/16", "1/32"
-Microstep_mode = "Full"
+Microstep_mode = microstepping_setting
 
 # Reference that maps modes to M0, M1, and M2 settings:
 Microstep_settings = {
@@ -67,3 +71,4 @@ def move_motor(steps, direction, delay, microstep_mode):
 
 def cleanup():
         GPIO.cleanup()
+
