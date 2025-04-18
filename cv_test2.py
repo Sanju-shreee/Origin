@@ -1,3 +1,9 @@
+#! /home/researchlab1/myvenv/bin/python3
+# path in terminal
+# source myvenv/bin/activate
+# cd /home/researchlab1/Documents/Testing
+# python3 cv_test.py
+
 import numpy as np
 import cv2 as cv
 import camera as loc
@@ -15,8 +21,8 @@ while True:
     if corners is None:
         print("Markers not detected.")
         cv.imshow("Frame", marked_frame)
-        if cv.waitKey(1) & 0xFF == ord('q'):
-            break
+        #if cv.waitKey(1) & 0xFF == ord('q'):
+        break
         continue
 
     (x1, y1), (x2, y2) = corners
@@ -31,13 +37,16 @@ while True:
     centroid, annotated = loc.find_centroid(cropped_frame)
     if centroid:
         cv.imshow("Cropped & Annotated", annotated)
-        print(f"Droplet pixel coords: {centroid}")
+        #print(f"Droplet pixel coords: {centroid}")
+        print(f'{centroid[0], centroid[1]}')
     else:
         print("Droplet not detected.")
-        cv.imshow("Cropped Frame", cropped_frame)
+    #sleep(4)
+        # cv.imshow("Cropped Frame", cropped_frame)
 
-    if cv.waitKey(1) & 0xFF == ord('q'):
-        break
+    #if cv.waitKey(1) & 0xFF == ord('q'):
+    break
 
 cap.release()
 cv.destroyAllWindows()
+
