@@ -13,31 +13,38 @@ import iamhome
 
 microstepping_setting = "1/32"
 stepfactor = 32
-'''
-if microstepping_setting == "1/32":
-    stepfactor = 32
-elif microstepping_setting == "1/16":
-    stepfactor == 16
-elif microstepping_setting == "1/8":
-    stepfactor == 8
-elif microstepping_setting == "1/4":
-    stepfactor == 4
-elif microstepping_setting == "1/2":
-    stepfactor == 2
-else:
-    stepfactor == 1
-'''
-#Prompt user to place droplet on surface. Loop until the user presses ENTER without typing anything
+
+# Run the homing sequence (Gantry goes to (0,0,0) defined by limit switches)
+iamhome.homing_sequence()
+
+# Define the pixel boundaries for the valid droplet area
+X_MIN = 50
+X_MAX = 265
+Y_MIN = 50
+Y_MAX = 280
+
+# Prompt user to place droplet on surface and press ENTER
 while True:
     user_input = input("Please press ENTER after you successfully place a droplet on the surface (within frame)!")
 
-    # Check if the input is empty (i.e., they pressed enter without typing anything)
     if user_input == "":
-        print("Proceeding to the next step...")
-        break  # Exit the loop and continue with the next step
-    else:
-        print("Invalid input. Please press ENTER without typing anything.")
+        # Run droplet detection when ENTER is pressed
+        drop_px = run_cv_test.run_cv_test()
 
+        if drop_px:  # Droplet detected
+            x, y = drop_px
+            if X_MIN <= y <= X_MAX and Y_MIN <= x <= Y_MAX:
+                print(f"Droplet detected at valid coordinates: {drop_px}")
+                break  # Exit the loop if valid droplet is detected
+            else:
+                print(f"Droplet detected at {drop_px}, but it's outside the valid region.")
+                print(f"  X must be between {X_MIN} and {X_MAX}")
+                print(f"  Y must be between {Y_MIN} and {Y_MAX}")
+        else:
+            print("No droplet detected. Please try again.")
+    else:
+        print("Invalid input. Please press ENTER without typing anything.")
+    
 # Creating a function to ensure user enters a valid integer as fluid droplet's end coordinates
 
 def get_integers(prompt):
@@ -53,7 +60,8 @@ conv_mmtosteps = 4.7619
 
 # End Coordinates the droplet must be transported to in units of mm            
 while True:
-    EndPointX = get_integers('Enter desired X coordinate between 0-100 (mm): ')
+    EndPointX = 100 - get_integers('Enter desired X coordinate between 0-100 (mm): ')
+    #EndPointX = 101 - EndPointX
     EndPoint_Xsteps = int(EndPointX*conv_mmtosteps*32)
     if 0 <= EndPoint_Xsteps <= Max_X_steps:
         break
@@ -61,7 +69,8 @@ while True:
         print(f"Please enter a value between 0 and {int(Max_X_steps/(32*conv_mmtosteps))}.")
         
 while True:
-    EndPointY = get_integers('Enter desired Y coordinate between 0-105 (mm): ')
+    EndPointY = 105 - get_integers('Enter desired Y coordinate between 0-105 (mm): ')
+    #EndPointY = 105 - EndPointY
     EndPoint_Ysteps = int(EndPointY*conv_mmtosteps*32)
     if 0 <= EndPoint_Ysteps <= Max_Y_steps:
         break
@@ -69,8 +78,11 @@ while True:
         print(f"Please enter a value between 0 and {int(Max_Y_steps/(32*conv_mmtosteps))}.")
 
 EndPoint = np.array([EndPointX, EndPointY])
-# Prints end coordinates
-print(EndPoint)
+
+#EndPointUser = np.array([EndPointX+100, EndPointY+105])
+# Prints droplet's end coordinates
+#print(EndPointUser)
+
 
 # Run the homing sequence (Gantry goes to (0,0,0) defined by limit switches)
 iamhome.homing_sequence()
@@ -116,7 +128,7 @@ sleep(1)
 
 # Z axis moves down to surface.
 # The droplet should be in between the left and right claws after the Z axis has come down. If not, camera calibration (mechanical) might be off.
-stepper_z.move_motor(915*stepfactor, 0, 0.00002/16, microstepping_setting)
+stepper_z.move_motor(980*stepfactor, 0, 0.00002/16, microstepping_setting)
 
 sleep(1)
 
@@ -124,9 +136,35 @@ sleep(1)
 claw.close_claw(step_delay)
 
 sleep(3)
-
+    
 # Z-axis moves up for clearance
-stepper_z.move_motor(300*stepfactor, 1, 0.00002/16, microstepping_setting)
+stepper_z.move_motor(360*stepfactor, 1, 0.00002/16, microstepping_setting)
+
+# Feedback loop to verify if droplet was picked up
+while True:
+    # Move claw out of camera view
+    iamhome.home_axis("X", stepper_x, 1, 0.0002/16, 0)
+
+    # Scan surface again
+    drop_px = run_cv_test.run_cv_test()
+
+    # If no droplet detected, break loop
+    if not isinstance(drop_px, tuple):
+        print("Droplet pickup verified successfully. Moving to final position.")
+        # Move x back to initial coordinates
+        stepper_x.move_motor(x_steps*stepfactor, 1, 0.0002/16, microstepping_setting)
+        break
+    else:
+        print("Droplet still detected on surface. Retrying pickup...")
+        # Move back to droplet coordinates
+        stepper_x.move_motor(x_steps*stepfactor, 1, 0.0002/16, microstepping_setting)
+        # Drop down and try again
+        claw.open_claw(step_delay)
+        sleep(1)
+        stepper_z.move_motor(360*stepfactor, 0, 0.00002/16, microstepping_setting)
+        claw.close_claw(step_delay)
+        sleep(3)
+        stepper_z.move_motor(360*stepfactor, 1, 0.00002/16, microstepping_setting)
 
 # Convert the droplet's end coordinates from mm to steps
 EndPoint_Xsteps = int(EndPointX*conv_mmtosteps)
@@ -155,7 +193,7 @@ else:
     print("X moving in +y direction")
 
 # Z-axis moves down
-stepper_z.move_motor(300*stepfactor, 0, 0.00002/16, microstepping_setting)
+stepper_z.move_motor(360*stepfactor, 0, 0.00002/16, microstepping_setting)
 
 # Claw opens
 #claw.servo_angle(85)
@@ -164,11 +202,11 @@ print("Droplet has been placed!")
 
 sleep(2)
 
-# Z up
-stepper_z.move_motor(615*stepfactor, 1, 0.00002/16, microstepping_setting)
+# Move the Z-axis up (changed from 640->300)
+stepper_z.move_motor(360*stepfactor, 1, 0.00002/16, microstepping_setting)
 
-# close claw
-#claw.servo_angle(68)
+# Close claw
+# claw.servo_angle(68)
 claw.close_claw(step_delay)
 
 # Home
@@ -179,6 +217,7 @@ if EndPoint_Ysteps*stepfactor > 40*stepfactor:
     iamhome.home_axis("Z", stepper_z, 1, 0.00002/16, 1) #homing z
 else:
     print("Moving to clear Y Limit Switch")
+    stepper_z.move_motor(200*stepfactor, 1, 0.00002/16, microstepping_setting)
     iamhome.homing_sequence()
 
 # Cleanup GPIO
@@ -187,5 +226,3 @@ stepper_x.cleanup()
 stepper_y.cleanup()
 stepper_z.cleanup()
 claw.cleanup()
-
-    
