@@ -13,7 +13,7 @@ while True:
         break
 
     # --- Step 1: Find marker corners (circular blobs only) ---
-    corners, marked_frame = loc.find_frame_corners(frame, circular_only=True, min_area=100, circ_thresh=0.7)
+    corners, marked_frame = loc.find_frame_corners(frame, circular_only=True, min_area=20, circ_thresh=0.7)
     if corners is None:
         print("Markers not detected.")
         cv.imshow("Frame", marked_frame)
