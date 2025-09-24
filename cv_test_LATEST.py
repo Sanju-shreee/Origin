@@ -1,40 +1,50 @@
-import cv2
+#! /home/researchlab1/myvenv/bin/python3
+import numpy as np
+import cv2 as cv
 import camera as loc
 
-cap = cv2.VideoCapture(0)
+cap = cv.VideoCapture(0)
 
 while True:
     ret, frame = cap.read()
     if not ret:
         break
 
-    # --- Step 1: Find marker corners ---
-    corners, marked_frame = loc.find_frame_corners(frame)
-    if corners is None:
-        print("Markers not detected.")
-        cv2.imshow("Frame", marked_frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-        continue
+    # --- Step 1: Find all blobs in the frame ---
+    blobs, annotated = loc.find_blobs(frame)
 
-    (x1, y1), (x2, y2) = corners
-    xmin, xmax = sorted([x1, x2])
-    ymin, ymax = sorted([y1, y2])
+    # Separate markers (rectangles) and droplets (circles)
+    markers = [b for b in blobs if b["shape"] == "rectangle"]
+    droplets = [b for b in blobs if b["shape"] == "circle"]
 
-    # --- Step 2: Crop frame ---
-    cropped_frame = frame[ymin:ymax, xmin:xmax]
+    # If we have at least 2 markers, crop the frame
+    if len(markers) >= 2:
+        (x1, y1) = markers[0]["centroid"]
+        (x2, y2) = markers[1]["centroid"]
+        xmin, xmax = sorted([x1, x2])
+        ymin, ymax = sorted([y1, y2])
+        cropped_frame = frame[ymin:ymax, xmin:xmax]
 
-    # --- Step 3: Find droplet centroid in cropped frame ---
-    centroid, annotated, color = loc.find_centroid(cropped_frame)
-    if centroid:
-        print(f"Droplet detected at {centroid}, color: {color}")
-        cv2.imshow("Cropped & Annotated", annotated)
+        # Re-run detection on cropped frame
+        droplets, annotated_crop = loc.find_blobs(cropped_frame)
+
+        if not droplets:
+            print("No droplet detected. Place a droplet on the surface.")
+        else:
+            for d in droplets:
+                cx, cy = d["centroid"]
+                print(f"Droplet detected: centroid={d['centroid']}, color={d['color']}, shape={d['shape']}")
+                cv.circle(annotated_crop, (cx, cy), 5, (0, 255, 0), -1)
+                cv.drawContours(annotated_crop, [d["contour"]], -1, (0, 255, 0), 2)
+
+        cv.imshow("Cropped & Annotated", annotated_crop)
+
     else:
-        print("Droplet not detected.")
-        cv2.imshow("Cropped Frame", cropped_frame)
+        print("Markers not detected. Place markers to crop frame.")
+        cv.imshow("Frame", annotated)
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    if cv.waitKey(1) & 0xFF == ord('q'):
         break
 
 cap.release()
-cv2.destroyAllWindows()
+cv.destroyAllWindows()
