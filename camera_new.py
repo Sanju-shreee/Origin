@@ -59,9 +59,13 @@ def find_blobs(image):
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     blobs = []
 
+    frame_area = image.shape[0] * image.shape[1]
+
     for cnt in contours:
         area = cv2.contourArea(cnt)
-        if area < 50:  # ignore tiny noise
+        if area < 50:   # too small → ignore
+            continue
+        if area > 0.4 * frame_area:  # too big → ignore
             continue
 
         # Shape check: circular vs rectangular
