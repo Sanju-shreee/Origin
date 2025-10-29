@@ -60,10 +60,10 @@ def classify_color_from_mask(hsv_roi):
 
 
 # ---------------- Main: Find circular droplets ----------------
-def find_blobs(image, save_to_csv=False):
+def find_blobs(image):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-    # Combined mask for all colors
+    # Combine all color masks
     mask_total = None
     for ranges in COLOR_RANGES.values():
         for (lower, upper) in ranges:
@@ -74,46 +74,37 @@ def find_blobs(image, save_to_csv=False):
     blobs = []
 
     frame_area = image.shape[0] * image.shape[1]
-    annotated_frame = image.copy()
 
     for cnt in contours:
         area = cv2.contourArea(cnt)
-        if area < 50 or area > 0.4 * frame_area:  # filter noise and large shapes
+        if area < 50 or area > 0.4 * frame_area:
             continue
 
         perimeter = cv2.arcLength(cnt, True)
         if perimeter == 0:
             continue
 
-        # Compute circularity for shape classification
         circularity = (4 * np.pi * area) / (perimeter * perimeter)
         shape = "circle" if circularity > 0.8 else "rectangle"
 
-        # Centroid
         M = cv2.moments(cnt)
         if M["m00"] == 0:
             continue
         cx = int(M["m10"] / M["m00"])
         cy = int(M["m01"] / M["m00"])
 
-        # Extract color inside ROI
         x, y, w, h = cv2.boundingRect(cnt)
         roi_hsv = hsv[y:y+h, x:x+w]
+
         color = classify_color_from_mask(roi_hsv)
 
-        # Store blob info
+        # Append a dictionary (not a list)
         blobs.append({
             "contour": cnt,
-            "centroid_x": cx,
-            "centroid_y": cy,
+            "centroid": (cx, cy),
             "shape": shape,
             "color": color
         })
 
-        # Draw annotation
-        cv2.drawContours(annotated_frame, [cnt], -1, (0, 255, 0), 2)
-        cv2.circle(annotated_frame, (cx, cy), 4, (0, 255, 0), -1)
-        cv2.putText(annotated_frame, f"{color}", (cx + 10, cy),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+    return blobs
 
-    return blobs, annotated_frame
