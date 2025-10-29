@@ -68,7 +68,7 @@ for d in droplet_data:
 
 # --- Step 7: Save as CSV ---
 # Get script directory
-script_dir = os.path.dirname(os.path.abspath(_file_))
+script_dir = os.path.dirname(os.path.abspath(__file__))
 csv_dir = os.path.join(script_dir, "csv")
 os.makedirs(csv_dir, exist_ok=True)
 
