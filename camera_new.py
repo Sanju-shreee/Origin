@@ -11,8 +11,7 @@ COLOR_RANGES = {
 }
 
 
-# ---------------- Marker detection (grecv.circle(cropped_frame, (cx, cy), 5, (0, 255, 0), -1)
-        cv.drawContours(cropped_frame, [blob["contour"]], -1, (0, 255, 0), 2)en + blue rectangles) ----------------
+# ---------------- Marker detection (green + blue rectangles) ----------------
 def find_frame_corners(image):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
