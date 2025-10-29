@@ -44,7 +44,7 @@ def find_frame_corners(image):
     return (corners if len(corners) >= 2 else None), image
 
 
-# ---------------- Blob detection (droplets etc.) ----------------
+# ---------------- Helper: Determine color inside ROI ----------------
 def classify_color_from_mask(hsv_roi):
     """Classify color based on HSV pixel ratios inside ROI."""
     total_pixels = hsv_roi.shape[0] * hsv_roi.shape[1]
@@ -59,10 +59,11 @@ def classify_color_from_mask(hsv_roi):
     return "unknown"
 
 
+# ---------------- Main: Detect all circular droplets ----------------
 def find_blobs(image):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-    # Build combined mask for all droplet colors
+    # Combine all color masks
     mask_total = None
     for ranges in COLOR_RANGES.values():
         for (lower, upper) in ranges:
@@ -73,43 +74,56 @@ def find_blobs(image):
     blobs = []
 
     frame_area = image.shape[0] * image.shape[1]
+    annotated_frame = image.copy()
 
     for cnt in contours:
         area = cv2.contourArea(cnt)
-        if area < 50 or area > 0.4 * frame_area:  # too small or big
+        if area < 50 or area > 0.4 * frame_area:
             continue
 
-        # Shape check: circle vs rectangle
         perimeter = cv2.arcLength(cnt, True)
-        if perimeter == 0: continue # skip if camera detects noise instead of droplet
-        #approx = cv2.approxPolyDP(cnt, 0.04 * perimeter, True)
+        if perimeter == 0:
+            continue
 
         circularity = (4 * np.pi * area) / (perimeter * perimeter)
-        if circularity > 0.8:
-            shape = "circle"
-        else:
-            shape = "rectangle"
-        #shape = "circle"
-        #if len(approx) == 4:
-        #    shape = "rectangle"
+        shape = "circle" if circularity > 0.8 else "rectangle"
 
-        # Centroid
         M = cv2.moments(cnt)
         if M["m00"] == 0:
             continue
         cx = int(M["m10"] / M["m00"])
         cy = int(M["m01"] / M["m00"])
 
-        # Extract ROI for color classification
         x, y, w, h = cv2.boundingRect(cnt)
         roi_hsv = hsv[y:y+h, x:x+w]
         color = classify_color_from_mask(roi_hsv)
 
         blobs.append({
             "contour": cnt,
-            "centroid": (cx, cy),
+            "centroid_x": cx,
+            "centroid_y": cy,
             "shape": shape,
             "color": color
         })
 
-    return blobs
+        # Draw blob outline + centroid
+        cv2.drawContours(annotated_frame, [cnt], -1, (0, 255, 0), 2)
+        cv2.circle(annotated_frame, (cx, cy), 4, (0, 255, 0), -1)
+        cv2.putText(annotated_frame, f"{color}", (cx + 10, cy),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+    # ---- Overlay a mini data table on the top left ----
+    if blobs:
+        overlay = annotated_frame.copy()
+        cv2.rectangle(overlay, (10, 10), (260, 40 + 20 * len(blobs)), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.5, annotated_frame, 0.5, 0, annotated_frame)
+        cv2.putText(annotated_frame, "Droplet Summary", (20, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+        y_offset = 55
+        for i, blob in enumerate(blobs, start=1):
+            text = f"{i}. {blob['color']} ({blob['centroid_x']},{blob['centroid_y']})"
+            cv2.putText(annotated_frame, text, (25, y_offset),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 255, 200), 1)
+            y_offset += 20
+
+    return blobs, annotated_frame
