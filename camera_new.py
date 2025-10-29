@@ -11,7 +11,8 @@ COLOR_RANGES = {
 }
 
 
-# ---------------- Marker detection (green + blue rectangles) ----------------
+# ---------------- Marker detection (grecv.circle(cropped_frame, (cx, cy), 5, (0, 255, 0), -1)
+        cv.drawContours(cropped_frame, [blob["contour"]], -1, (0, 255, 0), 2)en + blue rectangles) ----------------
 def find_frame_corners(image):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -76,18 +77,22 @@ def find_blobs(image):
 
     for cnt in contours:
         area = cv2.contourArea(cnt)
-        if area < 50:   # too small
-            continue
-        if area > 0.4 * frame_area:  # too big
+        if area < 50 or area > 0.4 * frame_area:  # too small or big
             continue
 
         # Shape check: circle vs rectangle
         perimeter = cv2.arcLength(cnt, True)
-        approx = cv2.approxPolyDP(cnt, 0.04 * perimeter, True)
+        if perimeter == 0: continue # skip if camera detects noise instead of droplet
+        #approx = cv2.approxPolyDP(cnt, 0.04 * perimeter, True)
 
-        shape = "circle"
-        if len(approx) == 4:
+        circularity = (4 * np.pi * area) / (perimeter * perimeter)
+        if circularity > 0.8:
+            shape = "circle"
+        else:
             shape = "rectangle"
+        #shape = "circle"
+        #if len(approx) == 4:
+        #    shape = "rectangle"
 
         # Centroid
         M = cv2.moments(cnt)
