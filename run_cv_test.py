@@ -1,6 +1,8 @@
 import subprocess
 import sys
 import os
+import csv
+import re
 
 def detect_droplet():
     """
@@ -17,15 +19,48 @@ def detect_droplet():
 
     print("STDOUT:", process.stdout)
     print("STDERR:", process.stderr)
+    # File name
+    csv_file = "/home/researchlab1/Documents/Testing/csv/droplet_data.csv"
 
-    try:
-        drop_px = eval(process.stdout.strip())
-        if isinstance(drop_px, tuple) and len(drop_px) == 2:
-            return drop_px
-        else:
-            return None
-    except:
+    # Read CSV file
+    droplets = {}
+
+    with open(csv_file, mode="r", newline="") as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            # Extract coordinates safely using regex
+            match = re.search(r"\((\d+),\s*(\d+)\)", row["Coordinate"])
+            if match:
+                cx, cy = int(match.group(1)), int(match.group(2))
+                droplet_num = int(row["Number"])
+                droplets[droplet_num] = {
+                    "color": row["Color"],
+                    "coords": (cx, cy)
+                }
+    if not droplets:
+        print("No droplet data found in CSV file.")
         return None
+    
+    # ✅ At this point, you have a dictionary like:
+    # {1: {'color': 'Red', 'coords': (154, 207)}, ...}
+
+    # Let the user pick a droplet
+    print("Available droplets:")
+    for num, info in droplets.items():
+        print(f"{num}. {info['color']} at {info['coords']}")
+
+    while True:
+        try:
+            selected_num = int(input("\nEnter the droplet number to use: "))
+            if selected_num in droplets:
+                drop_px = droplets[selected_num]["coords"]
+                print(f"\nSelected droplet #{selected_num} ({droplets[selected_num]['color']})")
+                print(f"({cx}, {cy})")
+                break
+            else:
+                print("Invalid number. Try again.")
+        except ValueError:
+            print("Please enter a valid integer.")
 
 def run_cv_test():
     """
